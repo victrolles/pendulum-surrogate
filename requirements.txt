@@ -1,3 +1,10 @@
+--extra-index-url https://download.pytorch.org/whl/cu134
+
 numpy
 matplotlib
 scipy
+tqdm
+scikit-learn
+
+torch
+torchvision

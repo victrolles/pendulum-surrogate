@@ -2,46 +2,47 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 
-def main():
-    # 1. Physical parameters
-    g = 9.81  # acceleration due to gravity (m/s^2)
-    l = 1.0   # length of the pendulum (m)
-    m = 1.0   # mass of the pendulum (kg)
+G = 9.81  # acceleration due to gravity (m/s^2)
 
-    # 2. Initial conditions
-    theta0 = np.radians(45)  # initial angle (radians)
-    omega0 = 0.0              # initial angular velocity (rad/s)
+def simulate(
+        l: float = 1.0,       # length of the pendulum (m)
+        m: float = 1.0,       # mass of the pendulum (kg)
+        b: float = 0.2,       # damping coefficient (kg/s)
+        theta0: float = 0.0,  # initial angle (radians)
+        omega0: float = 0.0,  # initial angular velocity (rad/s)
+        t: np.ndarray = np.linspace(0, 10, 1000)  # time array (s)
+    ) -> list[np.ndarray]:
 
-    # 3. Physical equation of the pendulum
+    # 1. Physical equation of the pendulum
     def pendulum(t, y):
         theta, omega = y
         dtheta = omega
-        domega = -(g / l) * np.sin(theta)
+        domega = -(G / l) * np.sin(theta) - (b / m * l * l) * omega
         return [dtheta, domega]
 
-    # 4. Simulation time
-    # Time interval for the simulation (start, end, step)
-    t = np.linspace(0, 10, 500)  # simulate for 10 seconds
-
-    # 5. Solve the differential equations
+    # 2. Solve the differential equations at the requested times
     solution = solve_ivp(
-        pendulum, 
+        pendulum,
         [t[0], t[-1]],
         [theta0, omega0],
         t_eval=t
     )
 
-    # 6. Plotting the results
-    theta = solution.y[0]
-
-    # Create a figure and axis for the plot
-    fig, ax = plt.subplots()
-    ax.plot(t, theta)
-    ax.set_title('Pendulum Motion')
-    ax.set_xlabel('Time (s)')
-    ax.set_ylabel('Angle (radians)')
-
-    plt.show()
+    return solution.y[0], solution.y[1]
 
 if __name__ == "__main__":
-    main()
+
+    theta0 = np.pi / 4  # initial angle (45 degrees)
+    t = np.linspace(0, 20, 1000)
+
+    theta, omega = simulate(theta0=theta0, t=t)
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ax.plot(t, theta, label='Angle (rad)')
+    ax.plot(t, omega, label='Angular Velocity (rad/s)')
+    plt.title('Pendulum Simulation')
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Values')
+    ax.legend()
+
+    plt.show()
