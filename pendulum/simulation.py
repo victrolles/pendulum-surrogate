@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 
 G = 9.81  # acceleration due to gravity (m/s^2)
@@ -29,20 +28,3 @@ def simulate(
     )
 
     return solution.y[0], solution.y[1]
-
-if __name__ == "__main__":
-
-    theta0 = np.pi / 4  # initial angle (45 degrees)
-    t = np.linspace(0, 20, 1000)
-
-    theta, omega = simulate(theta0=theta0, t=t)
-
-    fig, ax = plt.subplots(figsize=(12, 6))
-    ax.plot(t, theta, label='Angle (rad)')
-    ax.plot(t, omega, label='Angular Velocity (rad/s)')
-    plt.title('Pendulum Simulation')
-    ax.set_xlabel('Time (s)')
-    ax.set_ylabel('Values')
-    ax.legend()
-
-    plt.show()

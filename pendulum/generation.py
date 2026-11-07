@@ -4,17 +4,20 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
-from pendulum import simulate
+if __package__:
+    from .simulation import simulate
+else:
+    from simulation import simulate
 
-def generator():
-
-    # 1. Range of initial conditions and parameters for the pendulum simulation
-    list_l = [1.0]  # length of the pendulum (m)
-    list_m = [1.0]  # mass of the pendulum (kg)
-    list_b = [0.1]  # damping coefficient (kg/s)
-    list_theta0 = [np.pi / 4]  # initial angles (radians)
-    list_omega0 = [0.0]  # initial angular velocities (rad/s)
-    t = np.linspace(0, 10, 500)
+def generate_dataset(
+        dataset_dir: str = "datasets/pendulum",
+        list_l: list[float] = [1.0, 2.0],        # length of the pendulum (m)
+        list_m: list[float] = [1.0, 2.0],        # mass of the pendulum (kg)
+        list_b: list[float] = [0.1, 0.2],        # damping coefficient (kg/s)
+        list_theta0: list[float] = [np.pi / 4],  # initial angles (radians)
+        list_omega0: list[float] = [0.0],        # initial angular velocities (rad/s)
+        t: np.ndarray = np.linspace(0, 10, 500)  # time array (s)
+) -> Path:
 
     # 2. Generate all parameter combinations
     combinations = list(product(list_l, list_m, list_b, list_theta0, list_omega0))
@@ -45,19 +48,10 @@ def generator():
     dataset = np.vstack(dataset)
 
     # Save the dataset
-    output_path = Path(f"datasets/pendulum/pendulum_dataset_{dataset.shape[0]}.npz")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    dataset_dir = Path(dataset_dir)
+    if not dataset_dir.exists():
+        dataset_dir.mkdir(parents=True, exist_ok=True)
+
+    output_path = dataset_dir / f"pendulum_dataset_{dataset.shape[0]}.npz"
     np.savez_compressed(output_path, dataset=dataset)
-
-
-
-if __name__ == "__main__":
-
-    # Generate the dataset
-    generator()
-
-    # Load the dataset
-    data = np.load("datasets/pendulum/pendulum_dataset_499.npz")
-
-    # Display the first 5 rows
-    print(data["dataset"][:5])
+    return output_path

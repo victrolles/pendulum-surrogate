@@ -1,15 +1,24 @@
+from pathlib import Path
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-def trainer():
-    # Hyperparameters
-    learning_rate = 0.001
-    train_batch_size = 64
-    eval_batch_size = 64
-    num_epochs = 40
+if __package__:
+    from .model import PendulumModel
+else:
+    from model import PendulumModel
+
+def train(dataset_path: str,
+          model_dir: str = "pendulum/models",
+          hidden_size: int = 64,
+          num_hidden_layers: int = 1,
+          learning_rate: float = 0.001,
+          train_batch_size: int = 64,
+          eval_batch_size: int = 64,
+          num_epochs: int = 40):
 
     # Set the device to GPU if available, otherwise use CPU
     if torch.cuda.is_available():
@@ -20,12 +29,12 @@ def trainer():
         print("Using CPU")
 
     # Load the dataset
-    data = np.load("datasets/pendulum/pendulum_dataset_499.npz")
-    dataset = data["dataset"]
+    with np.load(dataset_path) as dataset:
+        data = dataset["dataset"]
 
     # Split input and output
-    X = dataset[:, :5]  # Input features: l, m, b, theta0, omega0
-    y = dataset[:, 5:]  # Output features: theta_next, omega_next
+    X = data[:, :5]  # Input features: l, m, b, theta0, omega0
+    y = data[:, 5:]  # Output features: theta_next, omega_next
     print(f"Input shape: {X.shape}, Output shape: {y.shape}")
 
     # Split the dataset into training and testing sets
@@ -54,12 +63,9 @@ def trainer():
     )
 
     # Define the model
-    model = nn.Sequential(
-        nn.Linear(5, 64),
-        nn.ReLU(),
-        nn.Linear(64, 64),
-        nn.ReLU(),
-        nn.Linear(64, 2)
+    model = PendulumModel(
+        hidden_size=hidden_size,
+        num_hidden_layers=num_hidden_layers
     ).to(device)
 
     # Define the loss function
@@ -106,7 +112,7 @@ def trainer():
         print(f"Epoch [{epoch+1}/{num_epochs}], Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
 
     # Save the model
-    torch.save(model.state_dict(), "models/pendulum/model_499.pth")
-
-if __name__ == "__main__":
-    trainer()
+    model_dir = Path(model_dir)
+    model_dir.mkdir(parents=True, exist_ok=True)
+    model_path = model_dir / f"model_{len(data)}.pth"
+    torch.save(model.state_dict(), model_path)
