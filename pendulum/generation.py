@@ -10,7 +10,7 @@ else:
     from simulation import simulate
 
 def generate_dataset(
-        dataset_dir: str = "datasets/pendulum",
+        dataset_dir: str = "pendulum/datasets",  # directory to save the dataset
         list_l: list[float] = [1.0, 2.0],        # length of the pendulum (m)
         list_m: list[float] = [1.0, 2.0],        # mass of the pendulum (kg)
         list_b: list[float] = [0.1, 0.2],        # damping coefficient (kg/s)
@@ -54,4 +54,5 @@ def generate_dataset(
 
     output_path = dataset_dir / f"pendulum_dataset_{dataset.shape[0]}.npz"
     np.savez_compressed(output_path, dataset=dataset)
+    print(f"Dataset saved to {output_path}")
     return output_path

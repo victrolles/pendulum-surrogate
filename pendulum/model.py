@@ -6,7 +6,7 @@ class PendulumModel(nn.Module):
             input_size: int = 5,
             hidden_size: int = 64,
             output_size: int = 2,
-            num_hidden_layers: int = 1
+            num_hidden_layers: int = 2
     ):
         super(PendulumModel, self).__init__()
         self.model = nn.Sequential(

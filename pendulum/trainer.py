@@ -18,7 +18,7 @@ def train(dataset_path: str,
           learning_rate: float = 0.001,
           train_batch_size: int = 64,
           eval_batch_size: int = 64,
-          num_epochs: int = 40):
+          num_epochs: int = 20) -> str:
 
     # Set the device to GPU if available, otherwise use CPU
     if torch.cuda.is_available():
@@ -109,10 +109,12 @@ def train(dataset_path: str,
 
         val_loss /= len(eval_loader.dataset)
 
-        print(f"Epoch [{epoch+1}/{num_epochs}], Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+        print(f"Epoch [{epoch+1}/{num_epochs}], Train Loss: {train_loss:.8e}, Val Loss: {val_loss:.8e}")
 
     # Save the model
     model_dir = Path(model_dir)
     model_dir.mkdir(parents=True, exist_ok=True)
     model_path = model_dir / f"model_{len(data)}.pth"
     torch.save(model.state_dict(), model_path)
+    print(f"Model saved to {model_path}")
+    return model_path
