@@ -37,6 +37,25 @@ class PendulumDataset(Dataset):
             self._parameters = torch.from_numpy(parameters.astype(np.float32, copy=False))
             self._states = torch.from_numpy(states.astype(np.float32, copy=False))
             self._steps = states.shape[1] - 1
+            self._initial_conditions = np.column_stack((parameters, states[:, 0]))
+
+    @property
+    def num_trajectories(self) -> int:
+        """Return the number of trajectories recorded in the compact archive."""
+        return 0 if self._rows is not None else len(self._parameters)
+
+    @property
+    def steps_per_trajectory(self) -> int:
+        if self._rows is not None:
+            raise ValueError("Trajectory boundaries are unavailable in legacy archives.")
+        return self._steps
+
+    def initial_conditions(self, trajectory: int) -> tuple[float, float, float, float, float]:
+        """Read L, M, B, theta0 and omega0 at the archive's original precision."""
+        if self._rows is not None:
+            raise ValueError("Initial conditions by trajectory require a compact archive.")
+        l, m, b, theta0, omega0 = self._initial_conditions[trajectory].tolist()
+        return l, m, b, theta0, omega0
 
     def __len__(self) -> int:
         if self._rows is not None:

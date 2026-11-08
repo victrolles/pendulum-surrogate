@@ -2,3 +2,5 @@ __pycache__/
 .venv/
 datasets/
 models/
+runs/
+wandb/

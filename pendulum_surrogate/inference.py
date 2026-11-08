@@ -5,7 +5,7 @@ import torch.nn as nn
 import numpy as np
 from tqdm import tqdm
 
-from model import PendulumModel
+from .model import PendulumModel
 
 def infer(
         model_path: str,            # path to the trained model

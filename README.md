@@ -10,16 +10,16 @@ python -m pip install -r requirements.txt
 ```
 
 ```bash
-python runner.py --mode simulate
-python runner.py --mode infer
-python runner.py --mode train
+python -m pendulum_surrogate.runner --mode simulate
+python -m pendulum_surrogate.runner --mode infer
+python -m pendulum_surrogate.runner --mode train
 ```
 
 ## Pendulum datasets
 
 ```bash
-python generate_dataset.py --yaml configs/dataset.yaml
-python runner.py --mode train --dataset_path PATH_TO_GENERATED_NPZ
+python -m pendulum_surrogate.generate_dataset --yaml configs/dataset.yaml
+python -m pendulum_surrogate.runner --mode train --dataset_path PATH_TO_GENERATED_NPZ
 ```
 
 Copy the example YAML to define a new dataset. Paths in `dataset_dir` are
@@ -37,6 +37,51 @@ the sampling settings, seed and NumPy/SciPy versions. Repeat a run with the
 same YAML, simulator and environment to reproduce the arrays. The
 `PendulumDataset` reader creates input and target pairs by indexing
 consecutive states and also reads legacy seven-column archives.
+
+## Training sweeps
+
+From the repository root, with the virtual environment activated, generate a
+compact dataset with multiple trajectories:
+
+```bash
+python -m pendulum_surrogate.generate_dataset --yaml configs/dataset.yaml
+```
+
+Set `parameters.dataset_path.value` in the sweep YAML to a compact NPZ with at
+least two trajectories. On Windows, both sweep configurations use the
+interpreter in `.venv/Scripts/python.exe`. Run the commands from the repository
+root. For a single configuration, use:
+
+```powershell
+.\.venv\Scripts\wandb.exe sweep --project pendulum-surrogate configs/sweep_single.yaml
+wandb sweep --project pendulum-surrogate configs/sweep_single.yaml
+.\.venv\Scripts\wandb.exe agent --count 1 ENTITY/pendulum-surrogate/SWEEP_ID
+```
+
+Replace `ENTITY/pendulum-surrogate/SWEEP_ID` with the path printed by
+`wandb sweep`. Create a new sweep after editing its YAML. To run the full
+grid, use `configs/sweep.yaml` and `--count 12`. Each run logs
+`loss/train` and `loss/eval` per epoch for the run Workspace.
+The sweep holds out whole trajectories with a fixed split seed. After
+training, the model and simulator start from the same recorded physical
+parameters and initial state and use the dataset time grid. The model feeds
+each prediction into the next step.
+
+The sweep minimizes `rollout_relative_error_pct`. At each predicted step
+and for each state component, the error is
+`100 * abs(prediction - simulation) / max(abs(simulation), relative_error_floor)`.
+The score averages these percentages over steps, the two state components
+and the validation trajectories. The floor defaults to 0.1 in the unit of
+each component (rad and rad/s) so zero crossings have a finite denominator.
+The run summary records the overall, angle and angular velocity percentages.
+The Workspace can display those values in the `relative_errors` panel.
+
+`runs/<run_id>/` contains the checkpoint, `metrics.json` and `evaluation.png`.
+The JSON records the effective configuration, dataset SHA-256, validation
+trajectory IDs, losses and rollout scores. The figure compares angle and
+angular velocity over time on one fixed validation trajectory. Inference is
+solid blue and simulation is dashed orange. The figure is also logged to
+the W&B run.
 
 ## Angular acceleration experiment on a separate branch
 

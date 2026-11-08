@@ -9,12 +9,11 @@ class PendulumModel(nn.Module):
             num_hidden_layers: int = 2
     ):
         super(PendulumModel, self).__init__()
-        self.model = nn.Sequential(
-            nn.Linear(input_size, hidden_size),
-            nn.ReLU(),
-            *[(nn.Linear(hidden_size, hidden_size),nn.ReLU()) for _ in range(num_hidden_layers - 1)],
-            nn.Linear(hidden_size, output_size)
-        )
+        layers = [nn.Linear(input_size, hidden_size), nn.ReLU()]
+        for _ in range(num_hidden_layers - 1):
+            layers.extend((nn.Linear(hidden_size, hidden_size), nn.ReLU()))
+        layers.append(nn.Linear(hidden_size, output_size))
+        self.model = nn.Sequential(*layers)
 
     def forward(self, x):
         return self.model(x)

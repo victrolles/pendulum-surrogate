@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from pathlib import Path
 
 import torch
@@ -6,17 +7,25 @@ from torch.utils.data import DataLoader, Subset
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-from dataset import PendulumDataset
-from model import PendulumModel
+from .dataset import PendulumDataset
+from .model import PendulumModel
 
-def train(dataset_path: str | Path,
-          model_dir: str = "models",
+def train(dataset_path: str | Path | PendulumDataset,
+          model_dir: str | Path = "models",
           hidden_size: int = 64,
           num_hidden_layers: int = 1,
           learning_rate: float = 0.001,
           train_batch_size: int = 64,
           eval_batch_size: int = 64,
-          num_epochs: int = 20) -> Path:
+          num_epochs: int = 20,
+          *,
+          split: tuple[np.ndarray, np.ndarray] | None = None,
+          seed: int | None = None,
+          on_epoch: Callable[[int, float, float], None] | None = None) -> Path:
+
+    if seed is not None:
+        torch.manual_seed(seed)
+    shuffle_generator = torch.Generator().manual_seed(seed) if seed is not None else None
 
     # Set the device to GPU if available, otherwise use CPU
     if torch.cuda.is_available():
@@ -26,14 +35,17 @@ def train(dataset_path: str | Path,
         device = torch.device("cpu")
         print("Using CPU")
 
-    dataset = PendulumDataset(dataset_path)
-    train_indices, val_indices = train_test_split(np.arange(len(dataset)), test_size=0.2, random_state=42)
+    dataset = dataset_path if isinstance(dataset_path, PendulumDataset) else PendulumDataset(dataset_path)
+    if split is None:
+        split = train_test_split(np.arange(len(dataset)), test_size=0.2, random_state=42)
+    train_indices, val_indices = split
 
     # Create dataloaders
     train_loader = DataLoader(
         Subset(dataset, train_indices),
         batch_size = train_batch_size,
         shuffle = True,
+        generator=shuffle_generator,
         pin_memory = True
     )
 
@@ -92,6 +104,8 @@ def train(dataset_path: str | Path,
         val_loss /= len(eval_loader.dataset)
 
         print(f"Epoch [{epoch+1}/{num_epochs}], Train Loss: {train_loss:.8e}, Val Loss: {val_loss:.8e}")
+        if on_epoch is not None:
+            on_epoch(epoch + 1, train_loss, val_loss)
 
     # Save the model
     model_dir = Path(model_dir)

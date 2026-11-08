@@ -11,7 +11,7 @@ import numpy as np
 import scipy
 from tqdm import tqdm
 
-from simulation import simulate
+from .simulation import simulate
 
 
 class Method(str, Enum):

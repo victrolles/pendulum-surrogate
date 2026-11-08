@@ -1,14 +1,15 @@
+from pathlib import Path
 from time import perf_counter
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from inference import infer
-from simulation import simulate
+from .inference import infer
+from .simulation import simulate
 
 
 def evaluate(
-        model_path: str,
+        model_path: str | Path,
         hidden_size: int = 64,
         num_hidden_layers: int = 1,
         num_steps: int = 2000,
@@ -18,7 +19,10 @@ def evaluate(
         theta0: float = np.pi / 4,
         omega0: float = 0.0,
         t: np.ndarray | None = None,
-        show: bool = True
+        show: bool = True,
+        *,
+        relative_error_floor: float = 0.1,
+        plot_path: str | Path | None = None,
 ) -> dict[str, float]:
     """Compare predictions and simulation at the same ``num_steps`` instants.
 
@@ -31,11 +35,14 @@ def evaluate(
     the prediction loop, excluding loading, setup, warm-up, and result transfers.
     Plotting and error calculations are excluded from both timings.
     Return timings in seconds, simulation/inference time ratio, MSE, and mean
-    absolute errors (MAE): mean(abs(prediction - reference)). Errors are in rad
-    for theta and rad/s for omega, without normalization or percentages.
+    absolute errors (MAE) in rad and rad/s. Relative errors are percentages
+    computed with max(abs(reference), relative_error_floor) as the denominator
+    in each channel. If plot_path is set, save the comparison figure there.
     """
     if not isinstance(num_steps, (int, np.integer)) or num_steps < 1:
         raise ValueError("num_steps must be a positive integer.")
+    if not np.isfinite(relative_error_floor) or relative_error_floor <= 0:
+        raise ValueError("relative_error_floor must be finite and positive.")
 
     if t is None:
         t = np.arange(num_steps + 1, dtype=float) * 0.02
@@ -76,15 +83,25 @@ def evaluate(
     if any(not np.isfinite(values).all() for values in trajectories):
         raise ValueError("Simulation or inference produced non-finite values; the trajectory may have diverged.")
 
+    theta_error = np.abs(theta_infer - theta_sim)
+    omega_error = np.abs(omega_infer - omega_sim)
+    theta_relative_pct = float(100 * np.mean(theta_error / np.maximum(np.abs(theta_sim), relative_error_floor)))
+    omega_relative_pct = float(100 * np.mean(omega_error / np.maximum(np.abs(omega_sim), relative_error_floor)))
     metrics = {
         "inference_time": inference_time,
         "simulation_time": simulation_time,
         "speedup": simulation_time / inference_time if inference_time > 0 else float("inf"),
-        "mse_theta": float(np.mean((theta_infer - theta_sim) ** 2)),
-        "mse_omega": float(np.mean((omega_infer - omega_sim) ** 2)),
-        "mae_theta": float(np.mean(np.abs(theta_infer - theta_sim))),
-        "mae_omega": float(np.mean(np.abs(omega_infer - omega_sim)))
+        "mse_theta": float(np.mean(theta_error ** 2)),
+        "mse_omega": float(np.mean(omega_error ** 2)),
+        "mae_theta": float(np.mean(theta_error)),
+        "mae_omega": float(np.mean(omega_error)),
+        "theta_relative_error_pct": theta_relative_pct,
+        "omega_relative_error_pct": omega_relative_pct,
+        "relative_error_pct": (theta_relative_pct + omega_relative_pct) / 2,
     }
+
+    if not show and plot_path is None:
+        return metrics
 
     fig, axes = plt.subplots(2, 1, figsize=(13, 8), sharex=True)
     fig.subplots_adjust(right=0.72, hspace=0.35)
@@ -93,7 +110,7 @@ def evaluate(
         (axes[0], theta_infer, theta_sim, r"$\theta$ (rad)"),
         (axes[1], omega_infer, omega_sim, r"$\omega$ (rad/s)")
     ):
-        ax.plot(t[1:], prediction, color="tab:blue", linewidth=2, label="Inference")
+        ax.plot(t[1:], prediction, color="tab:blue", linestyle="-", linewidth=2, label="Inference")
         ax.plot(t[1:], reference, color="tab:orange", linestyle="--", linewidth=1.2, label="Simulation")
         ax.set_ylabel(label)
         ax.grid(True, alpha=0.3)
@@ -116,6 +133,10 @@ def evaluate(
     fig.text(0.75, 0.85, stats, va="top", fontsize=10, linespacing=1.5,
              bbox={"boxstyle": "round,pad=0.8", "facecolor": "whitesmoke", "edgecolor": "lightgray"})
 
+    if plot_path is not None:
+        fig.savefig(plot_path, dpi=150)
     if show:
         plt.show()
+    else:
+        plt.close(fig)
     return metrics

@@ -1,0 +1,21 @@
+program: pendulum_surrogate/train_sweep.py
+command:
+  - ./.venv/Scripts/python.exe
+  - -m
+  - pendulum_surrogate.train_sweep
+method: grid
+metric:
+  name: rollout_relative_error_pct
+  goal: minimize
+parameters:
+  # Replace with the archive produced by configs/dataset.yaml.
+  dataset_path: {value: "datasets/pendulum_dataset_16000_dc0ffe756dc6413aba7f6657a77b6f88.npz"}
+  num_epochs: {value: 30}
+  seed: {value: 42}
+  split_seed: {value: 42}
+  relative_error_floor: {value: 0.1}
+  train_batch_size: {value: 64}
+  eval_batch_size: {value: 64}
+  learning_rate: {values: [0.001]}
+  hidden_size: {values: [64]}
+  num_hidden_layers: {values: [1]}

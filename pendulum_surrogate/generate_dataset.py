@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from generation import Method, generate_dataset
+from .generation import Method, generate_dataset
 
 
 class _UniqueKeyLoader(yaml.SafeLoader):

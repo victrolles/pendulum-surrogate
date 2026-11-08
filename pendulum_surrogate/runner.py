@@ -4,11 +4,11 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-from evaluation import evaluate
-from generation import generate_dataset
-from inference import infer
-from simulation import simulate
-from trainer import train
+from .evaluation import evaluate
+from .generation import generate_dataset
+from .inference import infer
+from .simulation import simulate
+from .trainer import train
 
 def run_simulation(
     l: float = 1.0,             # length of the pendulum (m)
