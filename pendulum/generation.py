@@ -1,5 +1,6 @@
 from itertools import product
 from pathlib import Path
+from enum import Enum
 
 import numpy as np
 from tqdm import tqdm
@@ -9,14 +10,19 @@ if __package__:
 else:
     from simulation import simulate
 
+method = Enum('Method', ['fixed_sampling', 'random_sampling'])
+
 def generate_dataset(
-        dataset_dir: str = "pendulum/datasets",  # directory to save the dataset
-        list_l: list[float] = [1.0, 2.0],        # length of the pendulum (m)
-        list_m: list[float] = [1.0, 2.0],        # mass of the pendulum (kg)
-        list_b: list[float] = [0.1, 0.2],        # damping coefficient (kg/s)
-        list_theta0: list[float] = [np.pi / 4],  # initial angles (radians)
-        list_omega0: list[float] = [0.0],        # initial angular velocities (rad/s)
-        t: np.ndarray = np.linspace(0, 10, 500)  # time array (s)
+        dataset_dir: str = "pendulum/datasets",   # directory to save the dataset
+        method: method = method.fixed,            # method to generate the dataset
+        num_samples: int = 1000,                  # number of samples to generate (only used for random_sampling)
+        range_l: list[float] = [1.0, 2.0],        # length of the pendulum (m)
+        range_m: list[float] = [1.0, 2.0],        # mass of the pendulum (kg)
+        range_b: list[float] = [0.1, 0.2],        # damping coefficient (kg/s)
+        range_theta0: list[float] = [0.0, np.pi / 2],  # initial angles (radians)
+        range_omega0: list[float] = [0.0, 1.0],        # initial angular velocities (rad/s)
+        duration: float = 10.0,  # duration of the simulation (s)
+        framerate: float = 50.0,  # framerate of the simulation (Hz)
 ) -> Path:
 
     # 2. Generate all parameter combinations
