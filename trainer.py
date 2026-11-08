@@ -2,23 +2,21 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, Subset
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-if __package__:
-    from .model import PendulumModel
-else:
-    from model import PendulumModel
+from dataset import PendulumDataset
+from model import PendulumModel
 
-def train(dataset_path: str,
-          model_dir: str = "pendulum/models",
+def train(dataset_path: str | Path,
+          model_dir: str = "models",
           hidden_size: int = 64,
           num_hidden_layers: int = 1,
           learning_rate: float = 0.001,
           train_batch_size: int = 64,
           eval_batch_size: int = 64,
-          num_epochs: int = 20) -> str:
+          num_epochs: int = 20) -> Path:
 
     # Set the device to GPU if available, otherwise use CPU
     if torch.cuda.is_available():
@@ -28,35 +26,19 @@ def train(dataset_path: str,
         device = torch.device("cpu")
         print("Using CPU")
 
-    # Load the dataset
-    with np.load(dataset_path) as dataset:
-        data = dataset["dataset"]
-
-    # Split input and output
-    X = data[:, :5]  # Input features: l, m, b, theta0, omega0
-    y = data[:, 5:]  # Output features: theta_next, omega_next
-    print(f"Input shape: {X.shape}, Output shape: {y.shape}")
-
-    # Split the dataset into training and testing sets
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    # Convert NumPy arrays to PyTorch tensors
-    X_train = torch.tensor(X_train, dtype=torch.float32)
-    y_train = torch.tensor(y_train, dtype=torch.float32)
-
-    X_val = torch.tensor(X_val, dtype=torch.float32)
-    y_val = torch.tensor(y_val, dtype=torch.float32)
+    dataset = PendulumDataset(dataset_path)
+    train_indices, val_indices = train_test_split(np.arange(len(dataset)), test_size=0.2, random_state=42)
 
     # Create dataloaders
     train_loader = DataLoader(
-        TensorDataset(X_train, y_train),
+        Subset(dataset, train_indices),
         batch_size = train_batch_size,
         shuffle = True,
         pin_memory = True
     )
 
     eval_loader = DataLoader(
-        TensorDataset(X_val, y_val),
+        Subset(dataset, val_indices),
         batch_size = eval_batch_size,
         shuffle = False,
         pin_memory = True
@@ -114,7 +96,7 @@ def train(dataset_path: str,
     # Save the model
     model_dir = Path(model_dir)
     model_dir.mkdir(parents=True, exist_ok=True)
-    model_path = model_dir / f"model_{len(data)}.pth"
+    model_path = model_dir / f"model_{len(dataset)}.pth"
     torch.save(model.state_dict(), model_path)
     print(f"Model saved to {model_path}")
     return model_path

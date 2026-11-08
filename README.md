@@ -1,4 +1,4 @@
-# surrogate-models
+# pendulum-surrogate
 
 ## Setup
 
@@ -10,12 +10,35 @@ python -m pip install -r requirements.txt
 ```
 
 ```bash
-python pendulum/runner.py --mode simulate
-python pendulum/runner.py --mode infer
-python pendulum/runner.py --mode train
+python runner.py --mode simulate
+python runner.py --mode infer
+python runner.py --mode train
 ```
 
-## Angular acceleration experiment
+## Pendulum datasets
+
+```bash
+python generate_dataset.py --yaml configs/dataset.yaml
+python runner.py --mode train --dataset_path PATH_TO_GENERATED_NPZ
+```
+
+Copy the example YAML to define a new dataset. Paths in `dataset_dir` are
+relative to the YAML file and default to `datasets` alongside it. In
+`random_sampling`, set `num_samples` to the number of trajectories and
+provide an integer `seed`. Each parameter accepts a constant or a
+`[min, max]` interval. In `fixed_sampling`, list the values to combine in a
+Cartesian grid. The grid determines `num_samples` and you can specify it
+as a check. Use seconds for `duration`, Hz for `framerate`, and radians
+and rad/s for `theta0` and `omega0`.
+
+Each archive stores `[l, m, b]` once per trajectory and a series of
+`[theta, omega]` states including the initial state. JSON metadata records
+the sampling settings, seed and NumPy/SciPy versions. Repeat a run with the
+same YAML, simulator and environment to reproduce the arrays. The
+`PendulumDataset` reader creates input and target pairs by indexing
+consecutive states and also reads legacy seven-column archives.
+
+## Angular acceleration experiment on a separate branch
 
 Branch `experiment/pendulum-acceleration` predicts three outputs per step:
 angle theta (rad), angular velocity omega (rad/s), and angular acceleration

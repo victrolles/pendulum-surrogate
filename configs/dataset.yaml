@@ -1,0 +1,12 @@
+dataset_dir: ../datasets
+method: random_sampling
+num_samples: 32
+seed: 42
+duration: 10.0
+framerate: 50.0
+ranges:
+  l: [1.0, 2.0]
+  m: [1.0, 2.0]
+  b: [0.1, 0.2]
+  theta0: [0.0, 1.5707963267948966]
+  omega0: [0.0, 1.0]

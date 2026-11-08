@@ -3,12 +3,8 @@ from time import perf_counter
 import matplotlib.pyplot as plt
 import numpy as np
 
-if __package__:
-    from .inference import infer
-    from .simulation import simulate
-else:
-    from inference import infer
-    from simulation import simulate
+from inference import infer
+from simulation import simulate
 
 
 def evaluate(

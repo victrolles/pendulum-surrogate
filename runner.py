@@ -1,20 +1,14 @@
 import argparse
+from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-if __package__:
-    from .simulation import simulate
-    from .inference import infer
-    from .trainer import train
-    from .generation import generate_dataset
-    from .evaluation import evaluate
-else:
-    from simulation import simulate
-    from inference import infer
-    from trainer import train
-    from generation import generate_dataset
-    from evaluation import evaluate
+from evaluation import evaluate
+from generation import generate_dataset
+from inference import infer
+from simulation import simulate
+from trainer import train
 
 def run_simulation(
     l: float = 1.0,             # length of the pendulum (m)
@@ -45,7 +39,7 @@ def run_simulation(
     plt.show()
 
 def run_inference(
-    model_path: str = "pendulum/models/model_3992.pth",
+    model_path: str = "models/model_3992.pth",
     hidden_size: int = 64,
     num_hidden_layers: int = 1,
     num_steps: int = 1000,
@@ -86,27 +80,24 @@ def run_training(
         train_batch_size: int = 64,
         eval_batch_size: int = 64,
         num_epochs: int = 50,
-        model_dir: str = "pendulum/models",
-        dataset_dir: str = "datasets/pendulum",
-        t: np.ndarray = np.linspace(0, 10, 500)
+        model_dir: str = "models",
+        dataset_dir: str = "datasets",
+        t: np.ndarray = np.linspace(0, 10, 500),
+        *,
+        dataset_path: str | Path | None = None,
 ) -> None:
-    # Hyperparameters
-    list_l = [1.0]        # length of the pendulum (m)
-    list_m = [1.0]        # mass of the pendulum (kg)
-    list_b = [0.1]        # damping coefficient (kg/s)
-    list_theta0 = [np.pi / 4]  # initial angles (radians)
-    list_omega0 = [0.0]        # initial angular velocities (rad/s)
-
-    # Generate the dataset
-    dataset_path = generate_dataset(
-        dataset_dir=dataset_dir,
-        list_l=list_l,
-        list_m=list_m,
-        list_b=list_b,
-        list_theta0=list_theta0,
-        list_omega0=list_omega0,
-        t=t
-    )
+    generate = dataset_path is None
+    l, m, b, theta0, omega0 = 1.0, 1.0, 0.1, np.pi / 4, 0.0
+    if dataset_path is None:
+        dataset_path = generate_dataset(
+            dataset_dir=dataset_dir,
+            range_l=(l,),
+            range_m=(m,),
+            range_b=(b,),
+            range_theta0=(theta0,),
+            range_omega0=(omega0,),
+            t=t
+        )
 
     # Train the model
     model_path = train(
@@ -120,17 +111,20 @@ def run_training(
         num_epochs=num_epochs
     )
 
-    # Evaluate the model
+    if not generate:
+        return
+
+    # Evaluate the model on the same grid as the generated trajectory.
     evaluate(
         model_path=model_path,
         hidden_size=hidden_size,
         num_hidden_layers=num_hidden_layers,
         num_steps=len(t) - 1,
-        l=list_l[0],
-        m=list_m[0],
-        b=list_b[0],
-        theta0=list_theta0[0],
-        omega0=list_omega0[0],
+        l=l,
+        m=m,
+        b=b,
+        theta0=theta0,
+        omega0=omega0,
         t=t
     )
 
@@ -179,7 +173,8 @@ def run(args):
             num_epochs=args.num_epochs,
             model_dir=args.model_dir,
             dataset_dir=args.dataset_dir,
-            t=np.linspace(0, args.duration, args.num_points)
+            t=np.linspace(0, args.duration, args.num_points),
+            dataset_path=args.dataset_path,
         )
 
 def parse_args():
@@ -204,7 +199,7 @@ def parse_args():
                         help="Simulation duration in seconds (simulate, train, and evaluate modes).")
     parser.add_argument('--num_points', type=int, default=100,
                         help="Number of time points per simulation (simulate and train modes).")
-    parser.add_argument('--model_path', type=str, default="pendulum/models/model_3992.pth",
+    parser.add_argument('--model_path', type=str, default="models/model_3992.pth",
                         help="Path to the trained model weights (infer and evaluate modes).")
     parser.add_argument('--hidden_size', type=int, default=64,
                         help="Number of neurons in each hidden layer (infer, train, and evaluate modes).")
@@ -220,10 +215,12 @@ def parse_args():
                         help="Number of samples per validation batch (train mode).")
     parser.add_argument('--num_epochs', type=int, default=100,
                         help="Number of training epochs (train mode).")
-    parser.add_argument('--model_dir', type=str, default="pendulum/models",
+    parser.add_argument('--model_dir', type=str, default="models",
                         help="Directory where the trained model is saved (train mode).")
-    parser.add_argument('--dataset_dir', type=str, default="pendulum/datasets",
+    parser.add_argument('--dataset_dir', type=str, default="datasets",
                         help="Directory where the generated dataset is saved (train mode).")
+    parser.add_argument('--dataset_path', type=Path,
+                        help="Train on an existing NPZ archive (train mode).")
 
     return parser.parse_args()
 
