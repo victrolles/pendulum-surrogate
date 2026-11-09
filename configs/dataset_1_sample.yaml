@@ -1,7 +1,7 @@
 dataset_dir: ../datasets
 method: fixed_sampling
-duration: 10.0
-framerate: 50.0
+duration: 20.0
+framerate: 30.0
 ranges:
   l: [1.0]
   m: [1.0]

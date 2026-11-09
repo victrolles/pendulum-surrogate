@@ -1,119 +1,28 @@
-# pendulum-surrogate
-
-## Setup
-
-```bash
+```powershell
 python -m venv .venv
-.venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-```bash
-python -m pendulum_surrogate.runner --mode simulate
-python -m pendulum_surrogate.runner --mode infer
-python -m pendulum_surrogate.runner --mode train
-```
-
-## Pendulum datasets
-
-```bash
-python -m pendulum_surrogate.generate_dataset --yaml configs/dataset.yaml
-python -m pendulum_surrogate.runner --mode train --dataset_path PATH_TO_GENERATED_NPZ
-```
-
-Copy the example YAML to define a new dataset. Paths in `dataset_dir` are
-relative to the YAML file and default to `datasets` alongside it. In
-`random_sampling`, set `num_samples` to the number of trajectories and
-provide an integer `seed`. Each parameter accepts a constant or a
-`[min, max]` interval. In `fixed_sampling`, list the values to combine in a
-Cartesian grid. The grid determines `num_samples` and you can specify it
-as a check. Use seconds for `duration`, Hz for `framerate`, and radians
-and rad/s for `theta0` and `omega0`.
-
-Each archive stores `[l, m, b]` once per trajectory and a series of
-`[theta, omega]` states including the initial state. JSON metadata records
-the sampling settings, seed and NumPy/SciPy versions. Repeat a run with the
-same YAML, simulator and environment to reproduce the arrays. The
-`PendulumDataset` reader creates input and target pairs by indexing
-consecutive states and also reads legacy seven-column archives.
-
-## Training sweeps
-
-From the repository root, with the virtual environment activated, generate a
-compact dataset with multiple trajectories:
-
-```bash
+```powershell
+python -m pendulum_surrogate.generate_dataset --yaml configs/dataset_1_sample.yaml
 python -m pendulum_surrogate.generate_dataset --yaml configs/dataset.yaml
 ```
-
-Set `parameters.dataset_path.value` in the sweep YAML to a compact NPZ with at
-least two trajectories. On Windows, both sweep configurations use the
-interpreter in `.venv/Scripts/python.exe`. Run the commands from the repository
-root. For a single configuration, use:
 
 ```powershell
-.\.venv\Scripts\wandb.exe sweep --project pendulum-surrogate configs/sweep_single.yaml
 wandb sweep --project pendulum-surrogate configs/sweep_single.yaml
-.\.venv\Scripts\wandb.exe agent --count 1 ENTITY/pendulum-surrogate/SWEEP_ID
+wandb sweep --project pendulum-surrogate configs/sweep_single_v2.yaml
+wandb agent --count 1 ENTITY/pendulum-surrogate/SWEEP_ID
 ```
 
-Replace `ENTITY/pendulum-surrogate/SWEEP_ID` with the path printed by
-`wandb sweep`. Create a new sweep after editing its YAML. To run the full
-grid, use `configs/sweep.yaml` and `--count 12`. Each run logs
-`loss/train` and `loss/eval` per epoch for the run Workspace.
-The sweep holds out whole trajectories with a fixed split seed. After
-training, the model and simulator start from the same recorded physical
-parameters and initial state and use the dataset time grid. The model feeds
-each prediction into the next step.
-
-The sweep minimizes `rollout_relative_error_pct`. At each predicted step
-and for each state component, the error is
-`100 * abs(prediction - simulation) / max(abs(simulation), relative_error_floor)`.
-The score averages these percentages over steps, the two state components
-and the validation trajectories. The floor defaults to 0.1 in the unit of
-each component (rad and rad/s) so zero crossings have a finite denominator.
-The run summary records the overall, angle and angular velocity percentages.
-The Workspace can display those values in the `relative_errors` panel.
-
-`runs/<run_id>/` contains the checkpoint, `metrics.json` and `evaluation.png`.
-The JSON records the effective configuration, dataset SHA-256, validation
-trajectory IDs, losses and rollout scores. The figure compares angle and
-angular velocity over time on one fixed validation trajectory. Inference is
-solid blue and simulation is dashed orange. The figure is also logged to
-the W&B run.
-
-## Angular acceleration experiment on a separate branch
-
-Branch `experiment/pendulum-acceleration` predicts three outputs per step:
-angle theta (rad), angular velocity omega (rad/s), and angular acceleration
-alpha = d(omega)/dt (rad/s²).
-
-`solve_ivp` still integrates only theta and omega. Acceleration is evaluated from
-the same equation at every simulated state, without numerical differentiation.
-The model uses six inputs `[l, m, b, theta, omega, alpha]` and learns the targets
-`[theta_next, omega_next, alpha_next]`. Initial acceleration is computed from
-the physical equation. Each inference step feeds all three predictions back
-into the next input, including the predicted acceleration. This experiment does not
-guarantee better angle or velocity predictions; the training loss averages
-squared errors across all three outputs, which have different units and scales.
-
-Datasets use nine columns:
-`[l, m, b, theta, omega, alpha, theta_next, omega_next, alpha_next]`.
-They are saved in `pendulum/datasets/acceleration`, and new models in
-`pendulum/models/acceleration`. Existing datasets with seven or eight columns
-must be regenerated, and models with five inputs must be retrained.
-The dataset and checkpoint record the training time step; inference and
-evaluation reject a different requested step.
-
-```bash
-python -m pendulum.runner --mode train
-python -m pendulum.runner --mode infer
-python -m pendulum.runner --mode evaluate
+```powershell
+wandb sweep --project pendulum-surrogate configs/sweep.yaml
+wandb agent --count 12 ENTITY/pendulum-surrogate/SWEEP_ID
 ```
 
-The defaults train 99 transitions over 10 seconds and save `model_99.pth`.
-For custom runs, use `duration / num_steps` in inference and evaluation equal
-to `duration / (num_points - 1)` during training. All three trajectories are
-plotted, with MAE in rad, rad/s, and rad/s². Inference timings continue to exclude
-loading, setup, warm-up, and result transfers.
+```powershell
+python -m pendulum_surrogate.runner --mode simulate --duration 10 --framerate 50
+python -m pendulum_surrogate.runner --mode infer --duration 10 --framerate 50 --model_path PATH_TO_CHECKPOINT
+python -m pendulum_surrogate.runner --mode evaluate --duration 10 --framerate 50 --model_path PATH_TO_CHECKPOINT
+```

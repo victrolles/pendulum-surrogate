@@ -5,33 +5,33 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .inference import infer
-from .simulation import simulate
+from .simulation import _simulate_on_grid, time_grid
 
 
 def evaluate(
         model_path: str | Path,
         hidden_size: int = 64,
         num_hidden_layers: int = 1,
-        num_steps: int = 2000,
         l: float = 1.0,
         m: float = 1.0,
         b: float = 0.1,
         theta0: float = np.pi / 4,
         omega0: float = 0.0,
-        t: np.ndarray | None = None,
+        duration: float = 10.0,
+        framerate: float = 50.0,
         show: bool = True,
         *,
+        start_time: float = 0.0,
         relative_error_floor: float = 0.1,
         plot_path: str | Path | None = None,
 ) -> dict[str, float]:
-    """Compare predictions and simulation at the same ``num_steps`` instants.
+    """Compare predictions and simulation over duration seconds at framerate Hz.
 
-    ``t`` includes the initial instant and must contain ``num_steps + 1``
-    uniformly spaced times. By default, the time step is 0.02 seconds.
-    The time step must match the one used to train the model: the network
-    predicts one transition per call and cannot change its physical time step.
+    The model predicts one transition per call, so framerate must match the
+    dataset used to train it. The initial state is shared and excluded from
+    the comparison.
 
-    Simulation timing covers the simulate call; inference timing covers only
+    Simulation timing covers the solver call; inference timing covers only
     the prediction loop, excluding loading, setup, warm-up, and result transfers.
     Plotting and error calculations are excluded from both timings.
     Return timings in seconds, simulation/inference time ratio, MSE, and mean
@@ -39,24 +39,14 @@ def evaluate(
     computed with max(abs(reference), relative_error_floor) as the denominator
     in each channel. If plot_path is set, save the comparison figure there.
     """
-    if not isinstance(num_steps, (int, np.integer)) or num_steps < 1:
-        raise ValueError("num_steps must be a positive integer.")
     if not np.isfinite(relative_error_floor) or relative_error_floor <= 0:
         raise ValueError("relative_error_floor must be finite and positive.")
 
-    if t is None:
-        t = np.arange(num_steps + 1, dtype=float) * 0.02
-    else:
-        t = np.asarray(t, dtype=float)
-
-    if t.shape != (num_steps + 1,) or not np.isfinite(t).all():
-        raise ValueError("t must contain num_steps + 1 finite times, including the initial instant.")
-    time_steps = np.diff(t)
-    if np.any(time_steps <= 0) or not np.allclose(time_steps, time_steps[0], rtol=1e-6, atol=0):
-        raise ValueError("t must be strictly increasing and uniformly spaced.")
+    t = time_grid(duration, framerate, start_time=start_time)
+    num_steps = len(t) - 1
 
     start = perf_counter()
-    theta_sim, omega_sim = simulate(l=l, m=m, b=b, theta0=theta0, omega0=omega0, t=t)
+    theta_sim, omega_sim = _simulate_on_grid(l, m, b, theta0, omega0, t)
     simulation_time = perf_counter() - start
 
     theta_infer, omega_infer, inference_time = infer(
@@ -97,7 +87,6 @@ def evaluate(
         "mae_omega": float(np.mean(omega_error)),
         "theta_relative_error_pct": theta_relative_pct,
         "omega_relative_error_pct": omega_relative_pct,
-        "relative_error_pct": (theta_relative_pct + omega_relative_pct) / 2,
     }
 
     if not show and plot_path is None:
@@ -121,7 +110,7 @@ def evaluate(
 
     stats = (
         f"Compared points: {num_steps:,}\n"
-        f"Time step: {time_steps[0]:.3f} s\n\n"
+        f"Time step: {1 / framerate:.3f} s\n\n"
         f"Inference: {inference_time:.3f} s\n"
         f"Simulation: {simulation_time:.3f} s\n\n"
         f"Ratio simulation / inference:\n{metrics['speedup']:.3f}x\n"

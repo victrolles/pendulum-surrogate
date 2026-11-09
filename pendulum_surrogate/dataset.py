@@ -57,6 +57,15 @@ class PendulumDataset(Dataset):
         l, m, b, theta0, omega0 = self._initial_conditions[trajectory].tolist()
         return l, m, b, theta0, omega0
 
+    def has_initial_conditions(self, conditions: tuple[float, ...]) -> bool:
+        """Check for a matching trajectory at the model's input precision."""
+        if self._rows is not None:
+            raise ValueError("Initial conditions by trajectory require a compact archive.")
+        return bool(np.any(np.all(
+            self._initial_conditions.astype(np.float32) == np.asarray(conditions, dtype=np.float32),
+            axis=1,
+        )))
+
     def __len__(self) -> int:
         if self._rows is not None:
             return len(self._rows)

@@ -2,7 +2,7 @@ import json
 from collections.abc import Sequence
 from enum import Enum
 from itertools import product
-from math import isclose, prod
+from math import prod
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from uuid import uuid4
@@ -11,22 +11,12 @@ import numpy as np
 import scipy
 from tqdm import tqdm
 
-from .simulation import simulate
+from .simulation import _simulate_on_grid, time_grid
 
 
 class Method(str, Enum):
     fixed_sampling = "fixed_sampling"
     random_sampling = "random_sampling"
-
-
-def _time_grid(duration: float, framerate: float) -> np.ndarray:
-    if not np.isfinite(duration) or not np.isfinite(framerate) or duration <= 0 or framerate <= 0:
-        raise ValueError("duration and framerate must be finite and positive.")
-    steps = duration * framerate
-    num_steps = round(steps) if np.isfinite(steps) else 0
-    if num_steps < 1 or not isclose(steps, num_steps, abs_tol=1e-9, rel_tol=0):
-        raise ValueError("duration × framerate must give a positive whole number of transitions.")
-    return np.linspace(0, duration, num_steps + 1)
 
 
 def generate_dataset(
@@ -88,7 +78,7 @@ def generate_dataset(
         combinations = rng.uniform(lows, highs, size=(num_samples, len(ranges)))
 
     if t is None:
-        t = _time_grid(duration, framerate)
+        t = time_grid(duration, framerate)
     else:
         t = np.asarray(t, dtype=float)
         if t.ndim != 1 or t.size < 2 or not np.isfinite(t).all():
@@ -103,7 +93,7 @@ def generate_dataset(
     parameters = np.empty((num_samples, 3))
     states = np.empty((num_samples, len(t), 2))
     for index, (l, m, b, theta0, omega0) in enumerate(tqdm(combinations, total=num_samples)):
-        theta, omega = simulate(l, m, b, theta0, omega0, t)
+        theta, omega = _simulate_on_grid(l, m, b, theta0, omega0, t)
         if len(theta) != len(t) or len(omega) != len(t):
             raise ValueError("Simulation did not return a state at every requested time.")
         if not np.isfinite(theta).all() or not np.isfinite(omega).all():

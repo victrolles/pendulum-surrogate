@@ -3,16 +3,22 @@ command:
   - ./.venv/Scripts/python.exe
   - -m
   - pendulum_surrogate.train_sweep
+  # Fixed evaluation conditions: L, M, B, theta0, omega0.
+  - --unseen-case
+  - "2.2"
+  - "1.0"
+  - "0.1"
+  - "1.5707963267948966"
+  - "0.0"
 method: grid
 metric:
-  name: rollout_relative_error_pct
+  name: learned_rollout_theta_relative_error_pct
   goal: minimize
 parameters:
   # Replace with the archive produced by configs/dataset.yaml.
   dataset_path: {value: "datasets/pendulum_dataset_16000_dc0ffe756dc6413aba7f6657a77b6f88.npz"}
   num_epochs: {value: 30}
   seed: {value: 42}
-  split_seed: {value: 42}
   relative_error_floor: {value: 0.1}
   train_batch_size: {value: 64}
   eval_batch_size: {value: 64}
