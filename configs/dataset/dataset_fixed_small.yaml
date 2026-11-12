@@ -1,0 +1,10 @@
+dataset_dir: ../datasets
+method: fixed_sampling
+duration: 20.0
+framerate: 30.0
+ranges:
+  l: [1.0, 1.5, 2.0]
+  m: [1.0, 1.5, 2.0]
+  b: [0.1, 0.2, 0.3]
+  theta0: [-1.5707963267948966, 1.5707963267948966]
+  omega0: [0.0, 0.5, 1.0]

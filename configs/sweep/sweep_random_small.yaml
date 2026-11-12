@@ -10,18 +10,19 @@ command:
   - "0.1"
   - "1.5707963267948966"
   - "0.0"
-method: grid
+method: random
+run_cap: 12
 metric:
   name: learned_rollout_theta_relative_error_pct
   goal: minimize
 parameters:
   # Replace with the archive produced by configs/dataset.yaml.
   dataset_path: {value: "datasets/pendulum_dataset_16000_dc0ffe756dc6413aba7f6657a77b6f88.npz"}
-  num_epochs: {value: 30}
+  num_epochs: {values: [500, 1000]}
   seed: {value: 42}
   relative_error_floor: {value: 0.1}
   train_batch_size: {value: 64}
   eval_batch_size: {value: 64}
   learning_rate: {values: [0.0003, 0.001, 0.003]}
-  hidden_size: {values: [32, 64]}
+  hidden_size: {value: 64}
   num_hidden_layers: {values: [1, 2]}

@@ -1,0 +1,27 @@
+program: pendulum_surrogate/train_sweep.py
+command:
+  - ./.venv/Scripts/python.exe
+  - -m
+  - pendulum_surrogate.train_sweep
+  # Fixed evaluation conditions: L, M, B, theta0, omega0.
+  - --unseen-case
+  - "2.2"
+  - "1.0"
+  - "0.1"
+  - "1.5707963267948966"
+  - "0.0"
+method: grid
+metric:
+  name: learned_rollout_theta_relative_error_pct
+  goal: minimize
+parameters:
+  # Replace with the archive produced by configs/dataset.yaml.
+  dataset_path: {value: "configs/datasets/pendulum_dataset_97200_2099d5b617a640eda3f562d3c8ea88dc.npz"}
+  num_epochs: {values: [500, 1000]}
+  seed: {value: 42}
+  relative_error_floor: {value: 0.1}
+  train_batch_size: {value: 64}
+  eval_batch_size: {value: 64}
+  learning_rate: {values: [0.0003, 0.001, 0.003]}
+  hidden_size: {value: 64}
+  num_hidden_layers: {values: [1, 2]}
